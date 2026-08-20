@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: #060a07;
+  --color-bg-raised: #0b120c;
+  --color-bg-inset: #090e0a;
+  --color-border: #1b2a1d;
+  --color-border-bright: #274430;
+
+  --color-green-400: #7ee08c;
+  --color-green-500: #55c56a;
+  --color-green-600: #3b9950;
+  --color-green-950: #0c1c10;
+
+  --color-purple-300: #d5b8ff;
+  --color-purple-400: #b98bff;
+  --color-purple-500: #9d5dff;
+  --color-purple-600: #7c3fe0;
+  --color-purple-950: #180d2c;
+
+  --color-ink-50: #eef4ee;
+  --color-ink-200: #c3d1c4;
+  --color-ink-400: #8ea18f;
+  --color-ink-600: #5c6f5d;
+
+  --color-danger-400: #ff8080;
+  --color-danger-500: #ef4444;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink-50);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+/* ---- Ambient starfield backdrop, evokes the enchanting-table particle glow
+   without imitating any specific Minecraft UI screen. Respects reduced motion. ---- */
+.grovus-field {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(157, 93, 255, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 80% 15%, rgba(85, 197, 106, 0.4), transparent 60%),
+    radial-gradient(1.5px 1.5px at 60% 70%, rgba(157, 93, 255, 0.35), transparent 60%),
+    radial-gradient(1px 1px at 25% 85%, rgba(85, 197, 106, 0.3), transparent 60%),
+    radial-gradient(1px 1px at 40% 45%, rgba(157, 93, 255, 0.3), transparent 60%),
+    radial-gradient(1px 1px at 90% 60%, rgba(85, 197, 106, 0.35), transparent 60%);
+  background-repeat: repeat;
+  background-size: 900px 900px;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.grovus-glow-purple {
+  filter: drop-shadow(0 0 6px rgba(157, 93, 255, 0.55));
+}
+
+.grovus-panel {
+  background-color: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.grovus-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-bright) transparent;
+}
+.grovus-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.grovus-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-bright);
+  border-radius: 999px;
+}
+.grovus-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes glint-sweep {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+.grovus-glint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 40%,
+    rgba(213, 184, 255, 0.18) 50%,
+    transparent 60%
+  );
+  animation: glint-sweep 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .grovus-glint::after {
+    animation: none;
+  }
+}
+
+::selection {
+  background: var(--color-purple-600);
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-green-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
