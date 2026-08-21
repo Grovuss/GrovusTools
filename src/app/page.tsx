@@ -1,4 +1,4 @@
-import { Hammer, Compass, FlaskConical, Radio, DoorOpen, Users, Shirt, Terminal, Boxes, Skull, Sparkles, MapPinned } from "lucide-react";
+import { Hammer, Compass, MapPin, FlaskConical, Radio, DoorOpen, Users, Shirt, Terminal, Boxes, Skull, Sparkles, MapPinned } from "lucide-react";
 import { ToolCard } from "@/components/ToolCard";
 import { PixelIcon } from "@/components/PixelIcon";
 
@@ -52,7 +52,7 @@ export default function HomePage() {
         <h2 id="tools-heading" className="mb-5 font-mono text-sm uppercase tracking-wider text-[var(--color-ink-400)]">
           Available now
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ToolCard
             href="/tools/enchantments"
             title="Enchantment Calculator"
@@ -66,6 +66,13 @@ export default function HomePage() {
             description="Convert coordinates between the Overworld and Nether using Minecraft's 8:1 horizontal coordinate ratio."
             icon={Compass}
             accent="green"
+          />
+          <ToolCard
+            href="/tools/locator-color"
+            title="Locator Bar Color Finder"
+            description="Find your Minecraft Locator Bar color and see who else shares it."
+            icon={MapPin}
+            accent="purple"
           />
         </div>
       </section>

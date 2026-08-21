@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeftRight, Copy, Check, ClipboardPaste } from "lucide-react";
+import { ArrowLeftRight, ClipboardPaste } from "lucide-react";
 import {
   overworldToNether,
   netherToOverworld,
   parseF3String,
   formatCoord,
 } from "@/lib/minecraft/coordinates";
+import { CopyButton } from "@/components/CopyButton";
 
 type Axis = "x" | "y" | "z";
 type Fields = Record<Axis, string>;
@@ -27,7 +28,6 @@ export default function CoordinatesPage() {
   const [nether, setNether] = useState<Fields>({ x: "100", y: "64", z: "-200" });
   const [pasteValue, setPasteValue] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"overworld" | "nether" | null>(null);
 
   function updateOverworld(axis: Axis, value: string) {
     const next = { ...overworld, [axis]: value };
@@ -83,14 +83,6 @@ export default function CoordinatesPage() {
     }
   }
 
-  function copy(which: "overworld" | "nether") {
-    const f = which === "overworld" ? overworld : nether;
-    navigator.clipboard.writeText(`${f.x}, ${f.y}, ${f.z}`).then(() => {
-      setCopied(which);
-      setTimeout(() => setCopied(null), 1500);
-    });
-  }
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <h1 className="font-mono text-2xl font-bold text-[var(--color-ink-50)]">Coordinate Calculator</h1>
@@ -123,14 +115,7 @@ export default function CoordinatesPage() {
       {pasteError ? <p className="mt-2 text-sm text-[var(--color-danger-400)]">{pasteError}</p> : null}
 
       <div className="mt-6 grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
-        <CoordPanel
-          title="Overworld"
-          accent="green"
-          values={overworld}
-          onChange={updateOverworld}
-          onCopy={() => copy("overworld")}
-          copied={copied === "overworld"}
-        />
+        <CoordPanel title="Overworld" accent="green" values={overworld} onChange={updateOverworld} />
 
         <div className="flex items-center justify-center md:flex-col">
           <button
@@ -143,14 +128,7 @@ export default function CoordinatesPage() {
           <span className="mt-2 hidden font-mono text-xs text-[var(--color-ink-600)] md:block">×8 / ÷8</span>
         </div>
 
-        <CoordPanel
-          title="Nether"
-          accent="purple"
-          values={nether}
-          onChange={updateNether}
-          onCopy={() => copy("nether")}
-          copied={copied === "nether"}
-        />
+        <CoordPanel title="Nether" accent="purple" values={nether} onChange={updateNether} />
       </div>
     </div>
   );
@@ -161,15 +139,11 @@ function CoordPanel({
   accent,
   values,
   onChange,
-  onCopy,
-  copied,
 }: {
   title: string;
   accent: "green" | "purple";
   values: Fields;
   onChange: (axis: Axis, value: string) => void;
-  onCopy: () => void;
-  copied: boolean;
 }) {
   const color = accent === "green" ? "var(--color-green-400)" : "var(--color-purple-400)";
   return (
@@ -178,13 +152,7 @@ function CoordPanel({
         <h2 className="font-mono text-sm font-bold uppercase tracking-wider" style={{ color }}>
           {title}
         </h2>
-        <button
-          onClick={onCopy}
-          className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-ink-400)] transition-colors hover:border-[var(--color-border-bright)] hover:text-[var(--color-ink-50)]"
-        >
-          {copied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
-          {copied ? "Copied" : "Copy"}
-        </button>
+        <CopyButton value={`${values.x}, ${values.y}, ${values.z}`} />
       </div>
       <div className="grid grid-cols-3 gap-3">
         {(["x", "y", "z"] as Axis[]).map((axis) => (

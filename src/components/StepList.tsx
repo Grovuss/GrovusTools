@@ -1,9 +1,6 @@
-"use client";
-
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
 import { getEnchantment } from "@/lib/minecraft/enchantments";
 import { toRoman } from "@/lib/minecraft/optimizer";
+import { CopyButton } from "./CopyButton";
 import type { AnvilStep } from "@/lib/minecraft/types";
 
 function describe(enchants: AnvilStep["leftEnchants"]) {
@@ -13,25 +10,17 @@ function describe(enchants: AnvilStep["leftEnchants"]) {
 }
 
 export function StepList({ steps, itemName }: { steps: AnvilStep[]; itemName: string }) {
-  const [copied, setCopied] = useState(false);
-
-  function copyAll() {
-    const text = steps
-      .map((s, i) => {
-        const left = s.leftLabel === "Your Item" ? itemName : describe(s.leftEnchants) || s.leftLabel;
-        const right = describe(s.rightEnchants) || s.rightLabel;
-        return `Step ${i + 1}: Put "${left}" in the LEFT slot and "${right}" in the RIGHT slot. Cost: ${
-          s.tooExpensive ? "TOO EXPENSIVE" : `${s.cost} levels`
-        }. Result: ${describe(s.resultEnchants)}.`;
-      })
-      .join("\n");
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
-
   if (steps.length === 0) return null;
+
+  const instructionsText = steps
+    .map((s, i) => {
+      const left = s.leftLabel === "Your Item" ? itemName : describe(s.leftEnchants) || s.leftLabel;
+      const right = describe(s.rightEnchants) || s.rightLabel;
+      return `Step ${i + 1}: Put "${left}" in the LEFT slot and "${right}" in the RIGHT slot. Cost: ${
+        s.tooExpensive ? "TOO EXPENSIVE" : `${s.cost} levels`
+      }. Result: ${describe(s.resultEnchants)}.`;
+    })
+    .join("\n");
 
   return (
     <div className="grovus-panel p-5">
@@ -39,13 +28,7 @@ export function StepList({ steps, itemName }: { steps: AnvilStep[]; itemName: st
         <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[var(--color-ink-400)]">
           Step-by-step instructions
         </h3>
-        <button
-          onClick={copyAll}
-          className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs text-[var(--color-ink-400)] transition-colors hover:border-[var(--color-border-bright)] hover:text-[var(--color-ink-50)]"
-        >
-          {copied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
-          {copied ? "Copied" : "Copy instructions"}
-        </button>
+        <CopyButton value={instructionsText} label="Copy instructions" />
       </div>
 
       <ol className="space-y-3">

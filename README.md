@@ -1,51 +1,100 @@
 # Grovus Tools
 
-Minecraft utilities without the bullshit.
+Minecraft utilities without the bullshit. A real Next.js app, not a spreadsheet.
 
-Grovus Tools is a small collection of Minecraft calculators, built as a real
-Next.js web app instead of a spreadsheet or a Discord bot command. Everything
-runs client-side in your browser — no backend, no database, no accounts.
+**Tools:**
 
-**Live tools in this release:**
-
-- **[Enchantment Calculator](/tools/enchantments)** — finds the cheapest valid
-  order to combine enchanted books and gear in a Java Edition anvil, with a
-  real subset dynamic-program optimizer (not a flat "sum the levels" guess).
-- **[Coordinate Calculator](/tools/coordinates)** — converts Overworld ↔
-  Nether coordinates using the 8:1 ratio, with correct negative-number
-  handling and F3 debug-screen paste support.
+- **[Enchantment Calculator](/tools/enchantments)** — cheapest valid order to
+  combine enchanted books/gear in a Java Edition anvil, via a real subset
+  dynamic-program optimizer (not `sum of levels`).
+- **[Coordinate Calculator](/tools/coordinates)** — Overworld ↔ Nether
+  conversion (8:1 ratio), correct on negative numbers, with F3-paste support.
+- **[Locator Bar Color Finder](/tools/locator-color)** — a player's default
+  Locator Bar color from their username or UUID, plus other known players who
+  share it.
 
 ## Why the enchantment calculator is more than a formula
 
 Java Edition's anvil cost isn't `sum of enchantment levels`. It's shaped by:
 
-- **Prior work penalty** — every anvil operation on an item adds a hidden
-  "uses" counter, and each future operation costs an extra `2^uses - 1`
-  levels on top of everything else.
-- **Book vs. item cost** — every enchantment has two different cost
-  multipliers depending on whether it arrives via an enchanted book or a
-  non-book item.
-- **Order asymmetry** — combining `A + B` is not the same price as `B + A`,
-  because only the *sacrifice* (right slot) side's content gets charged; the
-  *target* (left slot) side's existing enchantments ride along for free.
-- **The 39-level survival cap** — any single anvil operation costing 40+
-  levels is rejected outright by a survival anvil.
+- **Prior work penalty** — every anvil operation adds a hidden "uses"
+  counter; each future operation costs `2^uses - 1` extra levels.
+- **Book vs. item cost** — enchantments have different multipliers depending
+  on whether they arrive via a book or a non-book item.
+- **Order asymmetry** — `A + B` ≠ `B + A` in cost, because only the
+  *sacrifice* (right slot) side's content gets charged.
+- **The 39-level cap** — any single operation costing 40+ levels is rejected.
 
-Because of this, the *order* you combine books in changes the total cost —
-sometimes by a lot — and finding the cheapest order is a real combinatorial
-search problem, not a lookup. See
-[`src/lib/minecraft/optimizer.ts`](src/lib/minecraft/optimizer.ts) for a full
-writeup of the algorithm (a Held–Karp-style subset dynamic program) and why
-it's structured that way.
+So the *order* you combine books in changes total cost, sometimes a lot —
+finding the cheapest order is a real search problem. See
+[`src/lib/minecraft/optimizer.ts`](src/lib/minecraft/optimizer.ts) for the
+algorithm (a Held–Karp-style subset DP) and why it's shaped that way.
+
+## Locator Bar Color Finder
+
+### The color algorithm
+
+Reverse-engineered from Java Edition, not a documented Mojang contract —
+see [`src/lib/minecraft/locator-color.ts`](src/lib/minecraft/locator-color.ts):
+
+```text
+hilo = mostSigBits XOR leastSigBits          (UUID split into two 64-bit halves)
+hash = int(hilo >> 32) XOR int(hilo)         (java.util.UUID.hashCode())
+R,G,B = bytes 2,1,0 of hash, each × 0.9, floored
+```
+
+Verified against the known pair `069a79f4-44e9-4726-a5be-fca90e38aaf5`
+(Notch) → `#DC5D7F` in `tests/locator-color.test.ts`.
+
+### Player database provider decision
+
+The "known players with this color" feature needs to query players *by
+color*, not by a known username/UUID. We researched the options the project
+brief pointed at before building anything:
+
+| Provider | Lookup | Bulk/query-by-field | Rate limit | Verdict |
+| --- | --- | --- | --- | --- |
+| **Mojang** (`api.mojang.com`) | username ⇄ UUID only | No | Undocumented, historically strict | Authoritative for resolving a *specific* username — used for that only. |
+| **Mowojang** | username/UUID lookup, batches of ≤10 | No bulk export documented | Not published | Mirrors Mojang's contract; no way to query by color. |
+| **Rebel Core** | username/UUID → profile + history | No bulk export documented | 60 req/min, no key | 65M+ usernames indexed, but still lookup-by-known-identifier only. |
+
+None of the three expose "give me every player with color X" or a
+licensable bulk dump. Building that index by looping their lookup endpoints
+over millions of accounts is exactly the brute-force approach this project
+explicitly rules out — and scraping/leaked dumps are off the table on legal
+and ethical grounds regardless of size.
+
+**So the index grows organically instead:** every real username/UUID looked
+up through Grovus gets upserted into our own `minecraft_players` table
+(UUID, username, precomputed color — see `src/lib/minecraft/playerDatabase.ts`).
+"Known players with this color" always means *players who've been looked up
+through Grovus*, never "everyone in Minecraft," and the UI says so. If a
+legitimately licensable bulk dataset shows up later, `scripts/import-players.ts`
+bulk-loads it into the same table without any app code changing.
+
+### Setup
+
+Without `DATABASE_URL` set, matches are stored in memory and reset on every
+restart — fine for local dev, not for production. To persist them:
+
+1. Create a Postgres database (e.g. a free [Neon](https://neon.tech) project).
+2. Set `DATABASE_URL` (see [`.env.example`](.env.example)) locally and in
+   Vercel's project settings.
+3. Nothing else — the table and its `color` index are created automatically
+   on first write.
+
+Username lookups call Mojang's API server-side (never from the browser),
+cached for an hour since usernames rarely change. Offline-mode/cracked-server
+accounts aren't in Mojang's records; search by UUID directly for those.
+Bedrock gamertags are rejected with an explanation — there's no stable
+Java-UUID-derived color to compute for them. The shown color is always the
+UUID-derived *default*; team colors and waypoint overrides aren't visible to
+a website with no access to a live server.
 
 ## Tech stack
 
-- [Next.js](https://nextjs.org) (App Router) + TypeScript
-- [Tailwind CSS v4](https://tailwindcss.com)
-- React 19
-- [lucide-react](https://lucide.dev) for icons
-- [Vitest](https://vitest.dev) for the calculation-engine test suite
-- No backend, no database — every calculator runs entirely in the browser
+Next.js (App Router) + TypeScript, Tailwind CSS v4, React 19, lucide-react,
+Vitest. `pg` for the optional Postgres-backed player index. No other backend.
 
 ## Local development
 
@@ -60,12 +109,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Testing
 
-The Minecraft mechanics (prior work, enchantment merging, conflicts, the
-39-level cap, coordinate conversion, and the optimizer itself) are covered by
-a Vitest suite independent of React:
-
 ```bash
-npm test          # run once
+npm test          # run once — engine + API logic, independent of React
 npm run test:watch
 ```
 
@@ -78,31 +123,20 @@ npm run start
 
 ## Deploying to Vercel
 
-1. Push this repository to GitHub.
-2. In [Vercel](https://vercel.com), choose **Add New → Project** and import
-   the repository. Vercel auto-detects Next.js — no configuration needed.
-3. Deploy. Every push to `main` redeploys automatically; every pull request
-   gets a preview deployment.
-
-There are no environment variables, no database, and no server that needs to
-stay running — the whole app is static/client-rendered pages plus a couple of
-prerendered routes.
+1. Push to GitHub, then **Add New → Project** in Vercel and import it.
+   Next.js is auto-detected — no config needed.
+2. (Optional) set `DATABASE_URL` in Vercel's project settings for a
+   persistent Locator Bar player index — see above.
+3. Deploy. Pushes to `main` redeploy automatically; PRs get previews.
 
 ## Minecraft version / data support
 
-Rules data (enchantment multipliers, max levels, conflicts, item
-compatibility) lives behind a small version registry in
-[`src/lib/minecraft/versions.ts`](src/lib/minecraft/versions.ts) rather than
+Rules data lives behind a small version registry in
+[`src/lib/minecraft/versions.ts`](src/lib/minecraft/versions.ts) instead of
 being scattered through the UI. Today only **Java Edition 26.2** is
-implemented. To add a future version:
-
-1. Duplicate the relevant parts of `enchantments.ts` / `items.ts` for the new
-   rules.
-2. Add an entry to `MINECRAFT_VERSIONS` in `versions.ts`.
-3. Wire a version selector value to it — the calculator UI and optimizer
-   don't need to change, since they only ever read through
-   `getVersionData()`.
-
+implemented. To add a version: duplicate the relevant `enchantments.ts` /
+`items.ts` data, add an entry to `MINECRAFT_VERSIONS`, and wire a selector
+value to it — the UI and optimizer only ever read through `getVersionData()`.
 Grovus never claims to support a version whose data isn't actually filled in.
 
 ## Project structure
@@ -110,65 +144,55 @@ Grovus never claims to support a version whose data isn't actually filled in.
 ```text
 src/
   app/
-    page.tsx                    # homepage
-    tools/page.tsx               # tool directory
-    tools/enchantments/page.tsx  # enchantment calculator
-    tools/coordinates/page.tsx   # coordinate calculator
-  components/                    # UI components (calculator panels, tree, etc.)
+    page.tsx                       # homepage
+    tools/page.tsx                  # tool directory
+    tools/enchantments/page.tsx     # enchantment calculator
+    tools/coordinates/page.tsx      # coordinate calculator
+    tools/locator-color/page.tsx    # locator bar color finder
+    api/minecraft/player/route.ts        # username/UUID -> color (+ indexes it)
+    api/minecraft/color-matches/route.ts # paginated color match lookup
+  components/                       # UI components
   lib/
-    shareState.ts                # URL <-> calculator state (de)serialization
+    shareState.ts                   # URL <-> enchant-calculator state
+    rateLimit.ts                    # best-effort per-IP rate limiting
     minecraft/
-      types.ts                   # shared engine types
-      enchantments.ts            # enchantment database
-      items.ts                   # item database
-      anvil.ts                   # core anvil mechanics (prior work, merging)
-      optimizer.ts                # the combine-order search algorithm
-      conflicts.ts                 # enchantment conflict rules
-      xp.ts                        # Java Edition XP curve
-      coordinates.ts               # Overworld/Nether conversion + parsing
-      versions.ts                  # version-aware data registry
-tests/                            # Vitest suite for the engine above
-public/textures/                  # extracted Minecraft item/block textures
+      types.ts / versions.ts        # shared types + version registry
+      enchantments.ts / items.ts    # enchantment + item databases
+      anvil.ts / optimizer.ts       # anvil mechanics + combine-order search
+      conflicts.ts / xp.ts          # conflict rules + Java XP curve
+      coordinates.ts                # Overworld/Nether conversion + parsing
+      uuid.ts / locator-color.ts    # UUID parsing + the color algorithm
+      mojang.ts / playerDatabase.ts # Mojang lookup + swappable player index
+scripts/import-players.ts           # bulk-import a legitimate dataset later
+tests/                              # Vitest suite for everything above
+public/textures/                    # extracted Minecraft item/block textures
 ```
 
-The calculation engine under `src/lib/minecraft` is deliberately independent
-of React, so it can be unit tested directly, reused by a future CLI, or moved
-into a Web Worker without touching any UI code.
+Calculation/engine code under `src/lib` is deliberately independent of
+React, so it's directly unit-testable and reusable outside the UI (a CLI, a
+Web Worker, etc.).
 
 ## Adding another tool
 
-Grovus is structured so a new tool is mostly additive:
-
-1. Add a route at `src/app/tools/<your-tool>/page.tsx`.
-2. Put any real calculation logic in `src/lib/<your-tool>/`, independent of
-   React, the same way the enchantment/coordinate engines are.
-3. Add a card for it to the homepage and `/tools` directory (or leave it as a
-   "Coming Soon" card until it's ready).
-4. Add a link to it in `src/components/Header.tsx`.
-
-No shared layout, database, or routing changes are required.
+1. Route at `src/app/tools/<tool>/page.tsx`.
+2. Real logic in `src/lib/<tool>/`, independent of React.
+3. Card on the homepage + `/tools` directory (or "Coming Soon").
+4. Link in `src/components/Header.tsx`.
 
 ## Texture assets
 
-`public/textures/` contains a small, hand-picked subset of Minecraft's item
-and block textures (swords, tools, armor, books, the anvil, the enchanting
-table, etc.) — not the full texture pack. Only the files the app actually
-references were extracted; everything is rendered with
-`image-rendering: pixelated` so the pixel art stays crisp at any display
-size instead of blurring.
-
-Minecraft is a trademark of Mojang Studios / Microsoft. Grovus Tools is an
-independent fan project, not affiliated with or endorsed by Mojang Studios or
-Microsoft. See [`LICENSE`](LICENSE) for details.
+`public/textures/` is a small, hand-picked subset of Minecraft's textures —
+not the full pack, only what the app references — rendered with
+`image-rendering: pixelated` to stay crisp at any size. Minecraft is a
+trademark of Mojang Studios / Microsoft; Grovus Tools is an independent fan
+project, not affiliated with or endorsed by either. See [`LICENSE`](LICENSE).
 
 ## Accessibility
 
-- All interactive controls are real `<button>`/`<input>`/`<select>` elements
-  with labels, not `div`s with click handlers.
-- Enchantment conflicts are shown with text (strikethrough + tooltip), not
-  color alone.
-- Focus states are visible everywhere (`:focus-visible` outlines).
-- Animations (the enchanted-item glint sweep) respect `prefers-reduced-motion`.
+Real `<button>`/`<input>`/`<select>` elements throughout, not clickable
+`div`s. Conflicts and errors are shown with text, never color alone. Focus
+states are visible everywhere. The glint animation respects
+`prefers-reduced-motion`.
 
 ## License
 
