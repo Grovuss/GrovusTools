@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Hammer, Compass, MapPin, LayoutGrid } from "lucide-react";
+import { Hammer, Compass, MapPin, Sprout, LayoutGrid } from "lucide-react";
 
 const NAV = [
   { href: "/tools/enchantments", label: "Enchantments", icon: Hammer },
   { href: "/tools/coordinates", label: "Coordinates", icon: Compass },
   { href: "/tools/locator-color", label: "Locator Color", icon: MapPin },
+  { href: "/tools/seed-finder", label: "Seed Finder", icon: Sprout },
   { href: "/tools", label: "All Tools", icon: LayoutGrid },
 ];
 

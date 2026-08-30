@@ -12,6 +12,9 @@ Minecraft utilities without the bullshit. A real Next.js app, not a spreadsheet.
 - **[Locator Bar Color Finder](/tools/locator-color)** — a player's default
   Locator Bar color from their username or UUID, plus other known players who
   share it.
+- **[World Seed Finder](/tools/seed-finder)** — recovers a world seed from
+  known structure locations using Java Edition's real structure-placement
+  math, verified against every observation supplied.
 
 ## Why the enchantment calculator is more than a formula
 
@@ -91,6 +94,70 @@ Java-UUID-derived color to compute for them. The shown color is always the
 UUID-derived *default*; team colors and waypoint overrides aren't visible to
 a website with no access to a live server.
 
+## World Seed Finder
+
+### Research first
+
+Before writing any placement code we pulled the actual algorithm from
+[Cubitect/cubiomes](https://github.com/Cubitect/cubiomes) (`finders.h`/`finders.c`),
+the reference implementation the project brief named, rather than guessing:
+
+```text
+regionSeed = regionX*341873128712 + regionZ*132897987541 + worldSeed + structureSalt
+rand = JavaRandom(regionSeed)
+chunkX = regionX*regionSize + rand.nextInt(chunkRange)
+chunkZ = regionZ*regionSize + rand.nextInt(chunkRange)
+```
+
+`src/lib/minecraft/javaRandom.ts` is a BigInt port of `java.util.Random`,
+matched line-for-line against Oracle's own published `nextInt(bound)` source
+(including its rejection-sampling edge case) — see its tests for the
+hand-verifiable invariants used in place of a possibly-misremembered magic
+number. `src/lib/minecraft/structureSeed.ts` carries the cubiomes-sourced
+salt/spacing constants and the forward placement function; `tests/structureSeed.test.ts`
+round-trips it end to end (generate an observation from a known seed, then
+confirm the search finds that exact seed back).
+
+### Why cubiomes wasn't compiled to WASM
+
+The brief's preferred architecture — C/Rust generation core compiled to
+WASM, run in a Web Worker — is the right call for full biome-aware
+generation. For the specific piece implemented here (structure region
+placement: a LCG seed plus two bounded RNG rolls), the "port" is about 100
+lines of directly-sourced, directly-testable arithmetic, not a
+reimplementation of Minecraft's generation stack. Reaching for a C toolchain
+and a WASM build pipeline for that would add real risk (a from-scratch
+build in this environment, with no way to regression-test it against actual
+Minecraft) without a corresponding accuracy or maintainability win. Web
+Workers are still used, for the reason the brief cares about: the search
+itself is CPU-heavy and must never block the UI.
+
+### Why the search isn't a full 48-bit brute force
+
+Structure placement depends only on a seed's lower 48 bits, so exhaustive
+cracking means up to ~281 trillion candidates. Cubiomes can chew through
+that in native, optimized C; a JS Web Worker cannot in any reasonable time
+(tens of hours, even parallelized). Rather than promise that and quietly
+fail to deliver, the finder searches the ~4.3 billion seeds that correspond
+to how Minecraft actually derives a seed from typed text (Java's 32-bit
+`String.hashCode()`, sign-extended) or a plain number — which is how the
+overwhelming majority of real, shared, human-chosen seeds are made. This is
+stated in the tool itself, not just here. A custom range is available for
+narrower or more targeted searches.
+
+### Supported structures
+
+Only structures using the simple, uniform "Feature" placement type are
+included: **Desert Pyramid, Igloo, Jungle Temple, Swamp Hut**. Structures
+using triangular placement (Ocean Monument, Woodland Mansion, End City) or
+ones we could not confirm current-version constants for from source
+(Shipwreck, Pillager Outpost) are left out rather than shipped with guessed
+values — matching the brief's own `biomeValidationSupported` /
+`seedCrackingSupported` distinction. Biome validation (confirming the
+predicted chunk's biome actually matches the structure, for extra
+confidence) is not implemented for any structure; every result is still a
+genuine, verified match on placement — see the in-app "How this works" note.
+
 ## Tech stack
 
 Next.js (App Router) + TypeScript, Tailwind CSS v4, React 19, lucide-react,
@@ -149,9 +216,11 @@ src/
     tools/enchantments/page.tsx     # enchantment calculator
     tools/coordinates/page.tsx      # coordinate calculator
     tools/locator-color/page.tsx    # locator bar color finder
+    tools/seed-finder/page.tsx      # world seed finder
     api/minecraft/player/route.ts        # username/UUID -> color (+ indexes it)
     api/minecraft/color-matches/route.ts # paginated color match lookup
   components/                       # UI components
+  workers/seedFinder.worker.ts      # one search slice; the UI spawns several
   lib/
     shareState.ts                   # URL <-> enchant-calculator state
     rateLimit.ts                    # best-effort per-IP rate limiting
@@ -163,6 +232,9 @@ src/
       coordinates.ts                # Overworld/Nether conversion + parsing
       uuid.ts / locator-color.ts    # UUID parsing + the color algorithm
       mojang.ts / playerDatabase.ts # Mojang lookup + swappable player index
+      javaRandom.ts                 # java.util.Random port (BigInt, verified)
+      structureSeed.ts              # cubiomes-sourced structure placement
+      seedFinder.ts                 # the search space + per-batch verification
 scripts/import-players.ts           # bulk-import a legitimate dataset later
 tests/                              # Vitest suite for everything above
 public/textures/                    # extracted Minecraft item/block textures
