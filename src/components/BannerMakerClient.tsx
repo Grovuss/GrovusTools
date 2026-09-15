@@ -7,7 +7,7 @@ import { BannerCanvas } from "@/components/BannerCanvas";
 import { DyeColorPicker } from "@/components/DyeColorPicker";
 import { BannerLayerList } from "@/components/BannerLayerList";
 import { composeBanner, downloadCanvasAsPng } from "@/lib/minecraft/bannerRender";
-import { DYE_COLORS, BANNER_PATTERNS, MAX_LAYERS, DEFAULT_DESIGN } from "@/lib/minecraft/banners";
+import { DYE_COLORS, BANNER_PATTERNS, MAX_LAYERS, DEFAULT_DESIGN, getDyeColor } from "@/lib/minecraft/banners";
 import { encodeBannerToParams, decodeBannerFromParams } from "@/lib/bannerShareState";
 import type { BannerDesign } from "@/lib/minecraft/banners";
 
@@ -75,7 +75,7 @@ function BannerMaker() {
         build it in-game.
       </p>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
         <div className="flex flex-col items-center justify-center gap-4 grovus-panel p-8">
           <BannerCanvas design={design} canvasRef={canvasRef} />
           <div className="flex flex-wrap justify-center gap-2">
@@ -105,7 +105,11 @@ function BannerMaker() {
             <h2 className="mb-3 font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-green-400)]">
               1 · Base Color
             </h2>
-            <DyeColorPicker value={design.baseColorId} onChange={(baseColorId) => setDesign((d) => ({ ...d, baseColorId }))} />
+            <DyeColorPicker
+              value={design.baseColorId}
+              onChange={(baseColorId) => setDesign((d) => ({ ...d, baseColorId }))}
+              label="Base Color"
+            />
           </section>
 
           <section className="grovus-panel p-4">
@@ -117,7 +121,11 @@ function BannerMaker() {
                 {design.layers.length} / {MAX_LAYERS}
               </span>
             </div>
-            <BannerLayerList layers={design.layers} onChange={(layers) => setDesign((d) => ({ ...d, layers }))} />
+            <BannerLayerList
+              layers={design.layers}
+              onChange={(layers) => setDesign((d) => ({ ...d, layers }))}
+              baseColorHex={getDyeColor(design.baseColorId).hex}
+            />
             <button
               onClick={addLayer}
               disabled={design.layers.length >= MAX_LAYERS}

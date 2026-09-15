@@ -111,3 +111,31 @@ export function downloadCanvasAsPng(canvas: HTMLCanvasElement, filename: string)
     URL.revokeObjectURL(url);
   }, "image/png");
 }
+
+/**
+ * Renders base color + a single pattern layer onto `canvas` — used for the
+ * small live preview thumbnails in the pattern picker, so people can see
+ * what a pattern actually looks like (and in what color) before choosing
+ * it, rather than picking a name off a list.
+ */
+export async function composePatternPreview(
+  canvas: HTMLCanvasElement,
+  baseColorHex: string,
+  patternTexture: string,
+  patternColorHex: string,
+  scale = 4
+): Promise<void> {
+  canvas.width = CLOTH_WIDTH * scale;
+  canvas.height = CLOTH_HEIGHT * scale;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const base = await renderLayer(BASE_MASK_TEXTURE, baseColorHex);
+  ctx.drawImage(base, 0, 0, canvas.width, canvas.height);
+
+  if (patternTexture !== BASE_MASK_TEXTURE) {
+    const pattern = await renderLayer(patternTexture, patternColorHex);
+    ctx.drawImage(pattern, 0, 0, canvas.width, canvas.height);
+  }
+}
