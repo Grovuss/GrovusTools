@@ -1,4 +1,4 @@
-import { Hammer, Compass, MapPin, Sprout, FlaskConical, Radio, DoorOpen, Users, Shirt, Terminal, Boxes, Skull, Sparkles, MapPinned } from "lucide-react";
+import { Hammer, Compass, MapPin, Sprout, Flag, FlaskConical, Radio, DoorOpen, Users, Shirt, Terminal, Boxes, Skull, Sparkles, MapPinned } from "lucide-react";
 import { ToolCard } from "@/components/ToolCard";
 import { PixelIcon } from "@/components/PixelIcon";
 
@@ -52,7 +52,7 @@ export default function HomePage() {
         <h2 id="tools-heading" className="mb-5 font-mono text-sm uppercase tracking-wider text-[var(--color-ink-400)]">
           Available now
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <ToolCard
             href="/tools/enchantments"
             title="Enchantment Calculator"
@@ -80,6 +80,13 @@ export default function HomePage() {
             description="Recover a world seed from known structure locations using real placement math."
             icon={Sprout}
             accent="green"
+          />
+          <ToolCard
+            href="/tools/banner-maker"
+            title="Banner Maker"
+            description="Design a Minecraft banner with real loom patterns and download it as a PNG."
+            icon={Flag}
+            accent="purple"
           />
         </div>
       </section>

@@ -15,6 +15,8 @@ Minecraft utilities without the bullshit. A real Next.js app, not a spreadsheet.
 - **[World Seed Finder](/tools/seed-finder)** — recovers a world seed from
   known structure locations using Java Edition's real structure-placement
   math, verified against every observation supplied.
+- **[Banner Maker](/tools/banner-maker)** — designs a Minecraft banner from
+  real loom patterns and dye colors, downloadable as a PNG.
 
 ## Why the enchantment calculator is more than a formula
 
@@ -158,6 +160,37 @@ predicted chunk's biome actually matches the structure, for extra
 confidence) is not implemented for any structure; every result is still a
 genuine, verified match on placement — see the in-app "How this works" note.
 
+## Banner Maker
+
+### The texture atlas had a trap in it
+
+Each pattern file in the supplied asset pack is a 64x64 image, but — per
+the Minecraft Wiki — it packs the banner's front *and* back faces side by
+side (the back is a mirror of the front), followed by separate pole/crossbar
+art used for the in-game item render. My first pass assumed the whole
+42-pixel-wide cloth region was a single face; the result rendered every
+pattern doubled and mirrored (visible immediately — a "Thing" charge with
+two logos side by side is not subtle). Cropping and comparing the two
+21-pixel halves directly confirmed the real front-face region is 21x41, not
+42x41 — see [`src/lib/minecraft/bannerRender.ts`](src/lib/minecraft/bannerRender.ts)
+for the corrected constants and the comment explaining why.
+
+### How it renders
+
+Each layer (the base color, then every pattern on top, in order) is tinted
+by multiplying the target dye color by the mask texture's own per-pixel
+luminance — the textures bake in subtle fabric-fold shading, which this
+preserves — while leaving alpha untouched so anti-aliased edges stay soft.
+`tests/bannerRender.test.ts` covers that math directly; the DOM/canvas
+wiring itself (image loading, compositing, PNG export) was verified with a
+real headless-browser run rather than mocked, including confirming
+"Download PNG" produces an actual valid PNG file.
+
+Vanilla Minecraft's own cap — a base color plus up to 6 pattern layers — is
+enforced in the UI. Patterns that need a crafted pattern item in-game
+(Thing, Snout, Creeper/Skull/Flower Charge) are labeled as such rather than
+presented as plain dye-and-loom patterns.
+
 ## Tech stack
 
 Next.js (App Router) + TypeScript, Tailwind CSS v4, React 19, lucide-react,
@@ -217,6 +250,7 @@ src/
     tools/coordinates/page.tsx      # coordinate calculator
     tools/locator-color/page.tsx    # locator bar color finder
     tools/seed-finder/page.tsx      # world seed finder
+    tools/banner-maker/page.tsx     # banner maker
     api/minecraft/player/route.ts        # username/UUID -> color (+ indexes it)
     api/minecraft/color-matches/route.ts # paginated color match lookup
   components/                       # UI components
@@ -235,6 +269,9 @@ src/
       javaRandom.ts                 # java.util.Random port (BigInt, verified)
       structureSeed.ts              # cubiomes-sourced structure placement
       seedFinder.ts                 # the search space + per-batch verification
+      banners.ts                    # dye colors + pattern catalog
+      bannerRender.ts               # pixel tinting + canvas compositing
+    bannerShareState.ts             # URL <-> banner design state
 scripts/import-players.ts           # bulk-import a legitimate dataset later
 tests/                              # Vitest suite for everything above
 public/textures/                    # extracted Minecraft item/block textures
@@ -255,9 +292,11 @@ Web Worker, etc.).
 
 `public/textures/` is a small, hand-picked subset of Minecraft's textures —
 not the full pack, only what the app references — rendered with
-`image-rendering: pixelated` to stay crisp at any size. Minecraft is a
-trademark of Mojang Studios / Microsoft; Grovus Tools is an independent fan
-project, not affiliated with or endorsed by either. See [`LICENSE`](LICENSE).
+`image-rendering: pixelated` to stay crisp at any size. `public/textures/banner/`
+holds the full banner pattern set (41 patterns + the base/crossbar masks)
+supplied for the Banner Maker. Minecraft is a trademark of Mojang Studios /
+Microsoft; Grovus Tools is an independent fan project, not affiliated with
+or endorsed by either. See [`LICENSE`](LICENSE).
 
 ## Accessibility
 

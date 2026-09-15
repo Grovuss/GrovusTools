@@ -1,4 +1,4 @@
-import { Hammer, Compass, MapPin, Sprout } from "lucide-react";
+import { Hammer, Compass, MapPin, Sprout, Flag } from "lucide-react";
 import { ToolCard } from "@/components/ToolCard";
 
 export const metadata = { title: "All Tools — Grovus Tools" };
@@ -10,7 +10,7 @@ export default function ToolsPage() {
       <p className="mt-2 max-w-xl text-[var(--color-ink-400)]">
         Every Grovus Tools calculator in one place.
       </p>
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <ToolCard
           href="/tools/enchantments"
           title="Enchantment Calculator"
@@ -38,6 +38,13 @@ export default function ToolsPage() {
           description="Recover a world seed from known structure locations using real placement math."
           icon={Sprout}
           accent="green"
+        />
+        <ToolCard
+          href="/tools/banner-maker"
+          title="Banner Maker"
+          description="Design a Minecraft banner with real loom patterns and download it as a PNG."
+          icon={Flag}
+          accent="purple"
         />
       </div>
     </div>
